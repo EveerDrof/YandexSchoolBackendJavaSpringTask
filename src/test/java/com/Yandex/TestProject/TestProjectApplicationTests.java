@@ -58,7 +58,7 @@ class TestProjectApplicationTests {
     @Test
     void postCorrectImportShouldReturn200() throws Exception {
         postImport().andExpect(status().isOk());
-        ;
+        
     }
 
     @Test
