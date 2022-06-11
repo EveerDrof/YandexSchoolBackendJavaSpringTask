@@ -28,4 +28,12 @@ public class ShopUnitImportService {
     public ArrayList<ShopUnit> findAllByParentId(String id) {
         return shopUnitRepository.findAllByParent(id);
     }
+
+    public long computeAveragePriceInCategory(String parent) {
+        Long result = shopUnitRepository.computeAveragePriceInCategory(parent);
+        if (result != null) {
+            return result.longValue();
+        }
+        return 0;
+    }
 }

@@ -3,8 +3,10 @@ package com.Yandex.TestProject.Controllers;
 import com.Yandex.TestProject.Entities.ShopUnit;
 import com.Yandex.TestProject.Entities.ShopUnitType;
 import com.Yandex.TestProject.ErrorResponseObject;
+import com.Yandex.TestProject.LocalDateTimeAdapter;
 import com.Yandex.TestProject.Services.ShopUnitImportService;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,20 +18,27 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Optional;
 
 @org.springframework.stereotype.Controller
 public class Controller {
     private ShopUnitImportService shopUnitService;
+    private DateTimeFormatter formatter;
+    private Gson gson;
 
     @Autowired
     public void ImportsController(ShopUnitImportService shopUnitImportService) {
         this.shopUnitService = shopUnitImportService;
+        formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.000'Z'").withZone(ZoneId.of("UTC"));
+        gson = new GsonBuilder().setPrettyPrinting()
+                .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
     }
 
     private JSONObject shopUnitToJSON(ShopUnit shopUnit) {
-        Gson gson = new Gson();
         String jsonInString = gson.toJson(shopUnit);
         JSONObject resultJSON = new JSONObject(jsonInString);
         resultJSON.remove("parent");
@@ -49,13 +58,16 @@ public class Controller {
         } else {
             resultJSON.put("children", jsonArray);
         }
+        if (shopUnit.getType() == ShopUnitType.CATEGORY) {
+            resultJSON.put("price", shopUnitService.computeAveragePriceInCategory(shopUnit.getId()));
+        }
+        resultJSON.put("date", shopUnit.getDate().format(formatter));
         return resultJSON;
     }
 
-    private void stringToShopUnitAndSave(JSONObject item) {
+    private void stringToShopUnitAndSave(JSONObject item, LocalDateTime updateDate) {
         String name = item.getString("name");
         String type = item.getString("type");
-//                long type = item.getString("price");
         String id = item.getString("id");
         ShopUnit parentUnit = null;
         if (!item.isNull("parentId")) {
@@ -65,13 +77,17 @@ public class Controller {
                 parentUnit = findResult.get();
             }
         }
-        ShopUnit shopUnit = new ShopUnit(id, name, ShopUnitType.valueOf(type), parentUnit);
+        long price = 0;
+        if (item.has("price")) {
+            price = item.getInt("price");
+        }
+        ShopUnit shopUnit = new ShopUnit(id, name, ShopUnitType.valueOf(type), parentUnit, price, updateDate);
         shopUnitService.save(shopUnit);
         if (item.has("children")) {
             JSONArray children = item.getJSONArray("children");
             for (int k = 0; k < children.length(); k++) {
                 JSONObject childJSONObject = children.getJSONObject(k);
-                stringToShopUnitAndSave(childJSONObject);
+                stringToShopUnitAndSave(childJSONObject, updateDate);
             }
         }
     }
@@ -85,9 +101,10 @@ public class Controller {
             JSONObject jsonObject = new JSONObject(body);
             JSONArray items = jsonObject.getJSONArray("items");
             String updateDate = jsonObject.getString("updateDate");
+            LocalDateTime date = LocalDateTime.parse(updateDate, formatter);
             for (int i = 0; i < items.length(); i++) {
                 JSONObject item = items.getJSONObject(i);
-                stringToShopUnitAndSave(item);
+                stringToShopUnitAndSave(item, date);
             }
         } catch (Exception exception) {
             return new ResponseEntity("Validation Failed", HttpStatus.BAD_REQUEST);

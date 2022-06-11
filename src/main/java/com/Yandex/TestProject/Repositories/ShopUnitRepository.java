@@ -11,4 +11,7 @@ import java.util.ArrayList;
 public interface ShopUnitRepository extends JpaRepository<ShopUnit, String> {
     @Query(value = "SELECT * FROM shop_unit s WHERE s.parent=?1", nativeQuery = true)
     ArrayList<ShopUnit> findAllByParent(String parent);
+
+    @Query(value = "SELECT AVG(s.price) FROM shop_unit s WHERE s.parent=?1", nativeQuery = true)
+    Long computeAveragePriceInCategory(String parent);
 }

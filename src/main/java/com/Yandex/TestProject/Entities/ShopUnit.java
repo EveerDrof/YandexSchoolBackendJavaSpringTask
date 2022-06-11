@@ -2,12 +2,15 @@ package com.Yandex.TestProject.Entities;
 
 import jakarta.persistence.*;
 
+import java.time.LocalDateTime;
+
 @Entity
 public class ShopUnit {
     @Id
     private String id;
     private String name;
     private long price;
+    private LocalDateTime date;
     @Enumerated(EnumType.STRING)
     private ShopUnitType type;
     @ManyToOne
@@ -18,12 +21,13 @@ public class ShopUnit {
 
     }
 
-    public ShopUnit(String id, String name, ShopUnitType type, ShopUnit parent) {
+    public ShopUnit(String id, String name, ShopUnitType type, ShopUnit parent, long price, LocalDateTime date) {
         this.id = id;
         this.name = name;
         this.type = type;
         this.parent = parent;
-//        this.price = price;
+        this.price = price;
+        this.date = date;
     }
 
 
@@ -57,5 +61,21 @@ public class ShopUnit {
 
     public void setParent(ShopUnit parent) {
         this.parent = parent;
+    }
+
+    public long getPrice() {
+        return price;
+    }
+
+    public void setPrice(long price) {
+        this.price = price;
+    }
+
+    public LocalDateTime getDate() {
+        return date;
+    }
+
+    public void setDate(LocalDateTime localDatetime) {
+        this.date = date;
     }
 }
