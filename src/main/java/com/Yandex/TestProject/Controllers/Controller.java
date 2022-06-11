@@ -4,7 +4,6 @@ import com.Yandex.TestProject.Entities.ShopUnit;
 import com.Yandex.TestProject.Entities.ShopUnitType;
 import com.Yandex.TestProject.ErrorResponseObject;
 import com.Yandex.TestProject.Services.ShopUnitImportService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,16 +34,19 @@ public class Controller {
             JSONObject jsonObject = new JSONObject(body);
             JSONArray items = jsonObject.getJSONArray("items");
             String updateDate = jsonObject.getString("updateDate");
-            final ObjectMapper mapper = new ObjectMapper();
             for (int i = 0; i < items.length(); i++) {
                 JSONObject item = items.getJSONObject(i);
                 String name = item.getString("name");
                 String type = item.getString("type");
+//                long type = item.getString("price");
                 String id = item.getString("id");
-                String parentId = item.getString("parentId");
                 ShopUnit parentUnit = null;
-                if (!parentId.isEmpty() && !parentId.equals("null")) {
-                    parentUnit = shopUnitService.findById(parentId).get();
+                if (!item.isNull("parentId")) {
+                    String parentId = item.getString("parentId");
+                    Optional<ShopUnit> findResult = shopUnitService.findById(parentId);
+                    if (!findResult.isEmpty()) {
+                        parentUnit = findResult.get();
+                    }
                 }
                 ShopUnit shopUnit = new ShopUnit(id, name, ShopUnitType.valueOf(type), parentUnit);
                 shopUnitService.save(shopUnit);
@@ -52,13 +54,7 @@ public class Controller {
         } catch (Exception exception) {
             return new ResponseEntity("Validation Failed", HttpStatus.BAD_REQUEST);
         }
-//        ArrayList<Object> items = (ArrayList<HashMap<String,Object>>) body.get("items");
-////                mapper.convertValue(body.get("items"), new TypeReference<>() {
-////        });
-//        for (Object item : items) {
-//            mapper.convertValue(body.get("items"),ShopUnit.class)
-//            shopUnitService.save(item);
-//        }
+
         return new ResponseEntity(HttpStatus.OK);
     }
 

@@ -7,6 +7,7 @@ public class ShopUnit {
     @Id
     private String id;
     private String name;
+    private long price;
     @Enumerated(EnumType.STRING)
     private ShopUnitType type;
     @ManyToOne
@@ -22,6 +23,7 @@ public class ShopUnit {
         this.name = name;
         this.type = type;
         this.parent = parent;
+//        this.price = price;
     }
 
 

@@ -2,6 +2,7 @@ package com.Yandex.TestProject;
 
 import jakarta.transaction.Transactional;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,17 +29,22 @@ class TestProjectApplicationTests {
         this.mockMvc = mockMvc;
     }
 
-    private ResultActions postImport() throws Exception {
+    private JSONObject createImportPostingJSON() throws JSONException {
         JSONObject jsonObject = new JSONObject();
         JSONArray items = new JSONArray();
         JSONObject item = new JSONObject();
         item.put("type", "CATEGORY");
         item.put("name", "Товар");
         item.put("id", firstImportObjectId);
-        item.put("parentId", "null");
+        item.put("parentId", "None");
         items.put(item);
         jsonObject.put("items", items);
         jsonObject.put("updateDate", "2022-02-01T12:00:00.000Z");
+        return jsonObject;
+    }
+
+    private ResultActions postImport(JSONObject jsonObject) throws Exception {
+
         return mockMvc.perform(post("/imports").contentType(MediaType.APPLICATION_JSON)
                 .content(jsonObject.toString()));
     }
@@ -57,8 +63,8 @@ class TestProjectApplicationTests {
 
     @Test
     void postCorrectImportShouldReturn200() throws Exception {
-        postImport().andExpect(status().isOk());
-        
+        postImport(createImportPostingJSON()).andExpect(status().isOk());
+
     }
 
     @Test
@@ -71,8 +77,15 @@ class TestProjectApplicationTests {
 
     @Test
     void postAndGetExistingNode() throws Exception {
-        postImport();
+        postImport(createImportPostingJSON());
         mockMvc.perform(get("/nodes/" + firstImportObjectId)).andExpect(status().isOk());
     }
 
+    @Test
+    void postNodeWithNull() throws Exception {
+        JSONObject jsonObject = createImportPostingJSON();
+        jsonObject.put("parentId", null);
+        postImport(jsonObject);
+        mockMvc.perform(get("/nodes/" + firstImportObjectId)).andExpect(status().isOk());
+    }
 }
