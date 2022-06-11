@@ -32,6 +32,13 @@ public class Controller {
         Gson gson = new Gson();
         String jsonInString = gson.toJson(shopUnit);
         JSONObject resultJSON = new JSONObject(jsonInString);
+        resultJSON.remove("parent");
+        ShopUnit parent = shopUnit.getParent();
+        if (parent != null) {
+            resultJSON.put("parentId", parent.getId());
+        } else {
+            resultJSON.put("parentId", JSONObject.NULL);
+        }
         ArrayList<ShopUnit> shopUnits = shopUnitService.findAllByParentId(shopUnit.getId());
         JSONArray jsonArray = new JSONArray();
         shopUnits.forEach((unit) -> {
