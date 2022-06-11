@@ -24,6 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class TestProjectApplicationTests {
     private MockMvc mockMvc;
     private String firstImportObjectId = "069cb8d7-bbdd-47d3-ad8f-82ef4c269df1";
+    private String nestedImportObjectId = "069cb8d7-bbdd-47d3-ad3f-82ef5c262df2";
 
     public TestProjectApplicationTests(@Autowired MockMvc mockMvc) {
         this.mockMvc = mockMvc;
@@ -87,5 +88,32 @@ class TestProjectApplicationTests {
         jsonObject.put("parentId", null);
         postImport(jsonObject);
         mockMvc.perform(get("/nodes/" + firstImportObjectId)).andExpect(status().isOk());
+    }
+
+    @Test
+    void testReturningChildren() throws Exception {
+        JSONObject jsonObject = createImportPostingJSON();
+        postImport(jsonObject);
+        mockMvc.perform(get("/nodes/" + firstImportObjectId))
+                .andExpect(jsonPath("$.children").isArray());
+    }
+
+    @Test
+    void testChildrenCorrectness() throws Exception {
+        JSONObject jsonObject = createImportPostingJSON();
+        JSONObject nestedObject = createImportPostingJSON();
+        nestedObject.put("parentId", firstImportObjectId);
+        nestedObject.put("id", nestedImportObjectId);
+        nestedObject.put("name", "aaaaaa");
+        nestedObject.remove("items");
+        nestedObject.remove("updateDate");
+        nestedObject.put("type", "CATEGORY");
+        JSONArray children = new JSONArray();
+        children.put(nestedObject);
+        jsonObject.getJSONArray("items").getJSONObject(0).put("children", children);
+        postImport(jsonObject);
+        String childrenJSONPath = "$.children";
+        mockMvc.perform(get("/nodes/" + firstImportObjectId))
+                .andExpect(jsonPath(childrenJSONPath).isArray()).andExpect(jsonPath(childrenJSONPath).isNotEmpty());
     }
 }
