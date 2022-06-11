@@ -1,6 +1,7 @@
 package com.Yandex.TestProject;
 
 import jakarta.transaction.Transactional;
+import org.hamcrest.core.IsNull;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -95,7 +96,7 @@ class TestProjectApplicationTests {
         JSONObject jsonObject = createImportPostingJSON();
         postImport(jsonObject);
         mockMvc.perform(get("/nodes/" + firstImportObjectId))
-                .andExpect(jsonPath("$.children").isArray());
+                .andExpect(jsonPath("$.children").value(IsNull.nullValue()));
     }
 
     @Test
@@ -115,5 +116,13 @@ class TestProjectApplicationTests {
         String childrenJSONPath = "$.children";
         mockMvc.perform(get("/nodes/" + firstImportObjectId))
                 .andExpect(jsonPath(childrenJSONPath).isArray()).andExpect(jsonPath(childrenJSONPath).isNotEmpty());
+    }
+
+    @Test
+    void nullChildShouldReturnNull() throws Exception {
+        JSONObject jsonObject = createImportPostingJSON();
+        postImport(jsonObject);
+        mockMvc.perform(get("/nodes/" + firstImportObjectId)).andExpect(jsonPath("$.children")
+                .value(IsNull.nullValue()));
     }
 }

@@ -37,7 +37,11 @@ public class Controller {
         shopUnits.forEach((unit) -> {
             jsonArray.put(shopUnitToJSON(unit));
         });
-        resultJSON.put("children", jsonArray);
+        if (jsonArray.length() == 0) {
+            resultJSON.put("children", JSONObject.NULL);
+        } else {
+            resultJSON.put("children", jsonArray);
+        }
         return resultJSON;
     }
 
