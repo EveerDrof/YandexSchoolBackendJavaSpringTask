@@ -83,6 +83,7 @@ public class Controller {
         }
         ShopUnit shopUnit = new ShopUnit(id, name, ShopUnitType.valueOf(type), parentUnit, price, updateDate);
         shopUnitService.save(shopUnit);
+        shopUnitService.updateDateForAllParents(shopUnit.getId(), updateDate);
         if (item.has("children")) {
             JSONArray children = item.getJSONArray("children");
             for (int k = 0; k < children.length(); k++) {

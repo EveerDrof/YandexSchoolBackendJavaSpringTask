@@ -180,4 +180,21 @@ class TestProjectApplicationTests {
         mockMvc.perform(get("/nodes/" + firstImportObjectId))
                 .andExpect(jsonPath("$.price").value(1500));
     }
+
+    @Test
+    void recursiveTimeTest() throws Exception {
+        JSONObject jsonObject = createImportPostingWithNested();
+        JSONObject rootItem = jsonObject.getJSONArray("items").getJSONObject(0);
+        JSONObject nestedObject = createNestedImportJSONObject();
+        JSONObject nestedInNested = createNestedImportJSONObject();
+        nestedInNested.put("id", "12312312321");
+        nestedInNested.put("parent", nestedObject.get("id"));
+        nestedObject.getJSONArray("children").put(nestedInNested);
+        rootItem.getJSONArray("children").put(nestedObject);
+        postImport(jsonObject);
+        jsonObject.put("updateDate", "2022-02-01T15:00:00.000Z");
+        postImport(jsonObject);
+        mockMvc.perform(get("/nodes/" + firstImportObjectId))
+                .andExpect(jsonPath("$.date").value("2022-02-01T15:00:00.000Z"));
+    }
 }
