@@ -47,6 +47,14 @@ class TestProjectApplicationTests {
 
     private JSONObject createImportPostingWithNested() throws JSONException {
         JSONObject jsonObject = createImportPostingJSON();
+        JSONObject nestedObject = createNestedImportJSONObject();
+        JSONArray children = new JSONArray();
+        children.put(nestedObject);
+        jsonObject.getJSONArray("items").getJSONObject(0).put("children", children);
+        return jsonObject;
+    }
+
+    private JSONObject createNestedImportJSONObject() throws JSONException {
         JSONObject nestedObject = createImportPostingJSON();
         nestedObject.put("parentId", firstImportObjectId);
         nestedObject.put("id", nestedImportObjectId);
@@ -54,10 +62,8 @@ class TestProjectApplicationTests {
         nestedObject.remove("items");
         nestedObject.remove("updateDate");
         nestedObject.put("type", "OFFER");
-        JSONArray children = new JSONArray();
-        children.put(nestedObject);
-        jsonObject.getJSONArray("items").getJSONObject(0).put("children", children);
-        return jsonObject;
+        nestedObject.put("children", new JSONArray());
+        return nestedObject;
     }
 
     private ResultActions postImport(JSONObject jsonObject) throws Exception {
@@ -156,5 +162,22 @@ class TestProjectApplicationTests {
         postImport(jsonObject);
         mockMvc.perform(get("/nodes/" + firstImportObjectId))
                 .andExpect(jsonPath("$.date").value(jsonObject.getString("updateDate")));
+    }
+
+    @Test
+    void recursivePriceAVGTest() throws Exception {
+        JSONObject jsonObject = createImportPostingWithNested();
+        JSONObject rootItem = jsonObject.getJSONArray("items").getJSONObject(0);
+        JSONObject nestedObject = createNestedImportJSONObject();
+        nestedObject.put("price", 1000);
+        JSONObject nestedInNested = createNestedImportJSONObject();
+        nestedInNested.put("id", "12312312321");
+        nestedInNested.put("parent", nestedObject.get("id"));
+        nestedInNested.put("price", 2000);
+        nestedObject.getJSONArray("children").put(nestedInNested);
+        rootItem.getJSONArray("children").put(nestedObject);
+        postImport(jsonObject);
+        mockMvc.perform(get("/nodes/" + firstImportObjectId))
+                .andExpect(jsonPath("$.price").value(1500));
     }
 }
