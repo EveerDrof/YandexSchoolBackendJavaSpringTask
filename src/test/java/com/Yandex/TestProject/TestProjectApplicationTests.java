@@ -197,4 +197,12 @@ class TestProjectApplicationTests {
         mockMvc.perform(get("/nodes/" + firstImportObjectId))
                 .andExpect(jsonPath("$.date").value("2022-02-01T15:00:00.000Z"));
     }
+
+    @Test
+    void salesItemsTest() throws Exception {
+        JSONObject jsonObject = createImportPostingWithNested();
+        postImport(jsonObject);
+        mockMvc.perform(get("/sales").param("date", jsonObject.getString("updateDate"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isArray());
+    }
 }

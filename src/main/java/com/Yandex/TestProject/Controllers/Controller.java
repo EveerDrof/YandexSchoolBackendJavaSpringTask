@@ -65,7 +65,18 @@ public class Controller {
         return resultJSON;
     }
 
-    private void stringToShopUnitAndSave(JSONObject item, LocalDateTime updateDate) {
+//    private void updateDateForParentLine(ShopUnit shopUnit) {
+//        Optional<ShopUnit> parentOptional = shopUnitService.findById(shopUnit.getId());
+//        if (pa != null) {
+//            if (parent.getDate().isBefore(shopUnit.getDate())) {
+//                parent.setDate(shopUnit.getDate());
+//                shopUnitService.save(parent);
+//                updateDateForParentLine(parent);
+//            }
+//        }
+//    }
+
+    private void stringToShopUnitAndSave(JSONObject item, LocalDateTime updateDate, ArrayList<ShopUnit> offers) {
         String name = item.getString("name");
         String type = item.getString("type");
         String id = item.getString("id");
@@ -83,12 +94,14 @@ public class Controller {
         }
         ShopUnit shopUnit = new ShopUnit(id, name, ShopUnitType.valueOf(type), parentUnit, price, updateDate);
         shopUnitService.save(shopUnit);
-        shopUnitService.updateDateForAllParents(shopUnit.getId(), updateDate);
+        if (shopUnit.getType() == ShopUnitType.OFFER && shopUnit.getDate().isAfter(shopUnit.getParent().getDate())) {
+            offers.add(shopUnit);
+        }
         if (item.has("children")) {
             JSONArray children = item.getJSONArray("children");
             for (int k = 0; k < children.length(); k++) {
                 JSONObject childJSONObject = children.getJSONObject(k);
-                stringToShopUnitAndSave(childJSONObject, updateDate);
+                stringToShopUnitAndSave(childJSONObject, updateDate, offers);
             }
         }
     }
@@ -103,14 +116,17 @@ public class Controller {
             JSONArray items = jsonObject.getJSONArray("items");
             String updateDate = jsonObject.getString("updateDate");
             LocalDateTime date = LocalDateTime.parse(updateDate, formatter);
+            ArrayList<ShopUnit> offers = new ArrayList<>();
             for (int i = 0; i < items.length(); i++) {
                 JSONObject item = items.getJSONObject(i);
-                stringToShopUnitAndSave(item, date);
+                stringToShopUnitAndSave(item, date, offers);
             }
+            offers.forEach((unit) -> {
+                shopUnitService.updateDateForAllParents(unit.getId(), unit.getDate());
+            });
         } catch (Exception exception) {
             return new ResponseEntity("Validation Failed", HttpStatus.BAD_REQUEST);
         }
-
         return new ResponseEntity(HttpStatus.OK);
     }
 

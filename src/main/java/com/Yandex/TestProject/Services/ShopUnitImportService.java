@@ -45,25 +45,17 @@ public class ShopUnitImportService {
     }
 
     public void updateDateForAllParents(String id, LocalDateTime date) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.of("UTC"));
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.of("UTC"
+        ));
         String formattedTime = formatter.format(date);
         EntityManager em = entityManagerFactory.createEntityManager();
         em.getTransaction().begin();
-        em.createNativeQuery("UPDATE shop_unit s SET" +
-                " s.`date`='" + formattedTime + "' WHERE " +
-                "(s.`date` < '" + formattedTime + "' AND s.id IN (SELECT T2.id\n" +
-                "FROM (\n" +
-                "    SELECT\n" +
-                "        @r AS _id,\n" +
-                "        (SELECT @r \\:= parent FROM shop_unit WHERE id = _id) AS parent,\n" +
-                "        @l \\:= @l + 1 AS lvl\n" +
-                "    FROM\n" +
-                "        (SELECT @r \\:= '" + id + "', @l \\:= 0) vars,\n" +
-                "        shop_unit h\n" +
-                "    WHERE @r <> 0) T1\n" +
-                "JOIN shop_unit T2\n" +
-                "ON T1._id = T2.id\n" +
-                "ORDER BY T1.lvl DESC));").executeUpdate();
+        em.createNativeQuery("UPDATE shop_unit s SET s.`date`= '" + formattedTime + "' WHERE s.`date`" +
+                " < '" + formattedTime + "' AND s.id IN (WITH RECURSIVE dates(id,parent,`date`)AS(\n" +
+                "                SELECT s1.id,s1.parent,s1.`date` FROM shop_unit s1 WHERE" +
+                " id= '" + id + "' UNION SELECT s2.id,s2.parent,s2.`date`\n" +
+                "                FROM shop_unit s2,dates s1 WHERE s1.parent = s2.id)SELECT id " +
+                " FROM dates)").executeUpdate();
         em.getTransaction().commit();
     }
 }
