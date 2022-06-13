@@ -202,7 +202,46 @@ class TestProjectApplicationTests {
     void salesItemsTest() throws Exception {
         JSONObject jsonObject = createImportPostingWithNested();
         postImport(jsonObject);
-        mockMvc.perform(get("/sales").param("date", jsonObject.getString("updateDate"))).andExpect(status().isOk())
-                .andExpect(jsonPath("$.items").isArray());
+        mockMvc.perform(get("/sales").param("date", jsonObject.getString("updateDate")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items").isArray())
+                .andExpect(jsonPath("$.items[0].date").value("2022-02-01T12:00:00.000Z"))
+                .andExpect(jsonPath("$.items[0].name").exists())
+                .andExpect(jsonPath("$.items[0].type").exists())
+                .andExpect(jsonPath("$.items[0].id").exists());
+    }
+
+    @Test
+    void salesNotInRangeTest() throws Exception {
+        JSONObject jsonObject = createImportPostingWithNested();
+        postImport(jsonObject);
+        mockMvc.perform(get("/sales").param("date", "2024-02-01T12:00:00.000Z"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isEmpty());
+    }
+
+    @Test
+    void salesPriceUpdateTest() throws Exception {
+        JSONObject jsonObject = createImportPostingWithNested();
+        postImport(jsonObject);
+        jsonObject.getJSONArray("items").getJSONObject(0).getJSONArray("children").getJSONObject(0)
+                .put("price", 999999);
+        jsonObject.put("updateDate", "2077-02-01T12:00:00.000Z");
+        postImport(jsonObject);
+        mockMvc.perform(get("/sales").param("date", "2077-02-01T12:00:00.000Z"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isNotEmpty())
+                .andExpect(jsonPath("$.items[0].price").value(999999));
+    }
+
+    @Test
+    void salesTimeBoundaries24hTest() throws Exception {
+        JSONObject jsonObject = createImportPostingWithNested();
+        postImport(jsonObject);
+        mockMvc.perform(get("/sales").param("date", "2022-02-02T12:00:01.000Z"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isEmpty());
+        mockMvc.perform(get("/sales").param("date", "2022-01-31T11:59:59.000Z"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isEmpty());
     }
 }

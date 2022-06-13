@@ -16,10 +16,12 @@ import java.util.Optional;
 public class ShopUnitImportService {
     private ShopUnitRepository shopUnitRepository;
     private EntityManagerFactory entityManagerFactory;
+    private DateTimeFormatter formatter;
 
     @Autowired
     public ShopUnitImportService(ShopUnitRepository shopUnitRepository, EntityManagerFactory entityManagerFactory) {
-
+        formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.of("UTC"
+        ));
         this.shopUnitRepository = shopUnitRepository;
         this.entityManagerFactory = entityManagerFactory;
     }
@@ -45,8 +47,6 @@ public class ShopUnitImportService {
     }
 
     public void updateDateForAllParents(String id, LocalDateTime date) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.of("UTC"
-        ));
         String formattedTime = formatter.format(date);
         EntityManager em = entityManagerFactory.createEntityManager();
         em.getTransaction().begin();
@@ -57,5 +57,9 @@ public class ShopUnitImportService {
                 "                FROM shop_unit s2,dates s1 WHERE s1.parent = s2.id)SELECT id " +
                 " FROM dates)").executeUpdate();
         em.getTransaction().commit();
+    }
+
+    public ArrayList<ShopUnit> getSales(LocalDateTime date) {
+        return shopUnitRepository.findSales(formatter.format(date));
     }
 }

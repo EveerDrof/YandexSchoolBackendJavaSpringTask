@@ -13,10 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -38,7 +35,7 @@ public class Controller {
                 .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
     }
 
-    private JSONObject shopUnitToJSON(ShopUnit shopUnit) {
+    private JSONObject shopUnitToJSON(ShopUnit shopUnit, boolean withChildren) {
         String jsonInString = gson.toJson(shopUnit);
         JSONObject resultJSON = new JSONObject(jsonInString);
         resultJSON.remove("parent");
@@ -48,15 +45,17 @@ public class Controller {
         } else {
             resultJSON.put("parentId", JSONObject.NULL);
         }
-        ArrayList<ShopUnit> shopUnits = shopUnitService.findAllByParentId(shopUnit.getId());
-        JSONArray jsonArray = new JSONArray();
-        shopUnits.forEach((unit) -> {
-            jsonArray.put(shopUnitToJSON(unit));
-        });
-        if (jsonArray.length() == 0) {
-            resultJSON.put("children", JSONObject.NULL);
-        } else {
-            resultJSON.put("children", jsonArray);
+        if (withChildren) {
+            ArrayList<ShopUnit> shopUnits = shopUnitService.findAllByParentId(shopUnit.getId());
+            JSONArray jsonArray = new JSONArray();
+            shopUnits.forEach((unit) -> {
+                jsonArray.put(shopUnitToJSON(unit, withChildren));
+            });
+            if (jsonArray.length() == 0) {
+                resultJSON.put("children", JSONObject.NULL);
+            } else {
+                resultJSON.put("children", jsonArray);
+            }
         }
         if (shopUnit.getType() == ShopUnitType.CATEGORY) {
             resultJSON.put("price", shopUnitService.computeAveragePriceInCategory(shopUnit.getId()));
@@ -65,16 +64,6 @@ public class Controller {
         return resultJSON;
     }
 
-//    private void updateDateForParentLine(ShopUnit shopUnit) {
-//        Optional<ShopUnit> parentOptional = shopUnitService.findById(shopUnit.getId());
-//        if (pa != null) {
-//            if (parent.getDate().isBefore(shopUnit.getDate())) {
-//                parent.setDate(shopUnit.getDate());
-//                shopUnitService.save(parent);
-//                updateDateForParentLine(parent);
-//            }
-//        }
-//    }
 
     private void stringToShopUnitAndSave(JSONObject item, LocalDateTime updateDate, ArrayList<ShopUnit> offers) {
         String name = item.getString("name");
@@ -139,6 +128,19 @@ public class Controller {
         }
         ShopUnit result = findResult.get();
 
-        return new ResponseEntity(shopUnitToJSON(result).toString(), HttpStatus.OK);
+        return new ResponseEntity(shopUnitToJSON(result, true).toString(), HttpStatus.OK);
+    }
+
+    @GetMapping(path = "sales", produces = {MediaType.APPLICATION_JSON_VALUE})
+    ResponseEntity getSales(@RequestParam String date) {
+        LocalDateTime dateTime = LocalDateTime.parse(date.substring(0, date.length() - 1));
+        ArrayList<ShopUnit> sales = shopUnitService.getSales(dateTime);
+        JSONObject responseJSON = new JSONObject();
+        JSONArray items = new JSONArray();
+        sales.forEach((unit) -> {
+            items.put(shopUnitToJSON(unit, false));
+        });
+        responseJSON.put("items", items);
+        return new ResponseEntity(responseJSON.toString(), HttpStatus.OK);
     }
 }

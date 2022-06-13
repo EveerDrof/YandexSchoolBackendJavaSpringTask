@@ -24,21 +24,6 @@ public interface ShopUnitRepository extends JpaRepository<ShopUnit, String> {
             "FROM cte WHERE price != 0) as t", nativeQuery = true)
     Long computeAveragePriceInCategory(String parent);
 
-    //    @Query(value =
-//            " UPDATE shop_unit s SET s.`date`=?2 WHERE " +
-//                    " ( !ISNULL(s.id) AND  s.id IN (SELECT T2.id  " +
-//                    " FROM ( " +
-//                    "    SELECT " +
-//                    "        @r AS _id, " +
-//                    "        (SELECT @r\\:=parent FROM shop_unit WHERE id = _id) AS parent, " +
-//                    "        @l\\:=@l + 1 AS lvl " +
-//                    "    FROM " +
-//                    "        (SELECT @r\\:=?1, @l\\:=0) vars, " +
-//                    "        shop_unit h " +
-//                    "    WHERE @r <> 0) T1 " +
-//                    " JOIN shop_unit T2 " +
-//                    " ON T1._id = T2.id " +
-//                    " ORDER BY T1.lvl DESC));", nativeQuery = true)
     @Query(value = "SELECT T2.*\n" +
             " FROM (\n" +
             "    SELECT\n" +
@@ -52,4 +37,9 @@ public interface ShopUnitRepository extends JpaRepository<ShopUnit, String> {
             " ON T1._id = T2.id\n" +
             " ORDER BY T1.lvl DESC;", nativeQuery = true)
     ArrayList<ShopUnit> updateDateForAllParents(String id);
+
+    @Query(value = "SELECT * FROM shop_unit s WHERE (?1 >= s.date - INTERVAL 1 DAY AND ?1 <= s.date + INTERVAL 1 DAY)",
+            nativeQuery = true)
+    ArrayList<ShopUnit> findSales(String date);
+    
 }
