@@ -1,7 +1,9 @@
 package com.Yandex.TestProject.Services;
 
 import com.Yandex.TestProject.Entities.ShopUnit;
+import com.Yandex.TestProject.Entities.ShopUnitStatisticUnit;
 import com.Yandex.TestProject.Repositories.ShopUnitRepository;
+import com.Yandex.TestProject.Repositories.ShopUnitStatisticUnitRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,9 +19,12 @@ public class ShopUnitImportService {
     private ShopUnitRepository shopUnitRepository;
     private EntityManagerFactory entityManagerFactory;
     private DateTimeFormatter formatter;
+    private ShopUnitStatisticUnitRepository shopUnitStatisticUnitRepository;
 
     @Autowired
-    public ShopUnitImportService(ShopUnitRepository shopUnitRepository, EntityManagerFactory entityManagerFactory) {
+    public ShopUnitImportService(ShopUnitRepository shopUnitRepository, EntityManagerFactory entityManagerFactory,
+                                 ShopUnitStatisticUnitRepository shopUnitStatisticUnitRepository) {
+        this.shopUnitStatisticUnitRepository = shopUnitStatisticUnitRepository;
         formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.of("UTC"
         ));
         this.shopUnitRepository = shopUnitRepository;
@@ -61,5 +66,22 @@ public class ShopUnitImportService {
 
     public ArrayList<ShopUnit> getSales(LocalDateTime date) {
         return shopUnitRepository.findSales(formatter.format(date));
+    }
+
+    public ArrayList<ShopUnitStatisticUnit> findStatisticsAllByIdAndPeriod(String id, LocalDateTime dateStart,
+                                                                           LocalDateTime dateEnd) {
+        return shopUnitStatisticUnitRepository.findAllByIdAndPeriod(id, formatter.format(dateStart),
+                formatter.format(dateEnd));
+    }
+
+    public void saveShopStatisticUnit(ShopUnitStatisticUnit shopUnitStatisticUnit) {
+        shopUnitStatisticUnitRepository.save(shopUnitStatisticUnit);
+    }
+
+    public void deleteByIdRecursive(ShopUnit shopUnit) {
+        System.out.println(shopUnit.getId());
+        shopUnitStatisticUnitRepository.deleteByIdRecursive(shopUnit);
+        shopUnitRepository.findAllByParent(shopUnit).forEach((this::deleteByIdRecursive));
+        shopUnitRepository.deleteById(shopUnit.getId());
     }
 }

@@ -1,6 +1,7 @@
 package com.Yandex.TestProject.Controllers;
 
 import com.Yandex.TestProject.Entities.ShopUnit;
+import com.Yandex.TestProject.Entities.ShopUnitStatisticUnit;
 import com.Yandex.TestProject.Entities.ShopUnitType;
 import com.Yandex.TestProject.ErrorResponseObject;
 import com.Yandex.TestProject.LocalDateTimeAdapter;
@@ -83,6 +84,7 @@ public class Controller {
         }
         ShopUnit shopUnit = new ShopUnit(id, name, ShopUnitType.valueOf(type), parentUnit, price, updateDate);
         shopUnitService.save(shopUnit);
+        shopUnitService.saveShopStatisticUnit(new ShopUnitStatisticUnit(shopUnit));
         if (shopUnit.getType() == ShopUnitType.OFFER && shopUnit.getDate().isAfter(shopUnit.getParent().getDate())) {
             offers.add(shopUnit);
         }
@@ -142,5 +144,28 @@ public class Controller {
         });
         responseJSON.put("items", items);
         return new ResponseEntity(responseJSON.toString(), HttpStatus.OK);
+    }
+
+    @GetMapping(path = "node/{id}/statistic", produces = {MediaType.APPLICATION_JSON_VALUE})
+    ResponseEntity getNodeStatistic(@PathVariable String id, @RequestParam String dateStart,
+                                    @RequestParam String dateEnd) {
+        LocalDateTime dateTimeStart = LocalDateTime.parse(dateStart.substring(0, dateStart.length() - 1));
+        LocalDateTime dateTimeEnd = LocalDateTime.parse(dateEnd.substring(0, dateEnd.length() - 1));
+        ArrayList<ShopUnitStatisticUnit> items = shopUnitService.findStatisticsAllByIdAndPeriod(id, dateTimeStart,
+                dateTimeEnd);
+        JSONObject responseJSON = new JSONObject();
+        responseJSON.put("items", new JSONArray(gson.toJson(items)));
+        return new ResponseEntity(responseJSON.toString(), HttpStatus.OK);
+    }
+
+    @DeleteMapping(path = "delete/{id}")
+    ResponseEntity deleteNode(@PathVariable String id) {
+        ShopUnit shopUnit = shopUnitService.findById(id).get();
+        String parentId = null;
+        if (shopUnit.getParent() != null) {
+            parentId = shopUnit.getParent().getId();
+        }
+        shopUnitService.deleteByIdRecursive(shopUnit);
+        return new ResponseEntity(HttpStatus.OK);
     }
 }

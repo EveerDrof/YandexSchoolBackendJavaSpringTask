@@ -13,8 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -243,5 +242,47 @@ class TestProjectApplicationTests {
         mockMvc.perform(get("/sales").param("date", "2022-01-31T11:59:59.000Z"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items").isEmpty());
+    }
+
+    @Test
+    void statisticsTest() throws Exception {
+        JSONObject jsonObject = createImportPostingWithNested();
+        postImport(jsonObject);
+        JSONObject category = jsonObject.getJSONArray("items").getJSONObject(0);
+        JSONObject offer = category.getJSONArray("children").getJSONObject(0);
+        offer.put("price", 999999);
+        jsonObject.put("updateDate", "2033-02-01T12:00:00.000Z");
+        postImport(jsonObject);
+        offer.put("price", 11111);
+        jsonObject.put("updateDate", "2044-02-01T12:00:00.000Z");
+        postImport(jsonObject);
+        mockMvc.perform(get("/node/" + category.getString("id") + "/statistic")
+                        .param("dateStart", "2000-02-01T12:00:00.000Z")
+                        .param("dateEnd", "2090-02-01T12:00:00.000Z"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isNotEmpty())
+                .andExpect(jsonPath("$.items[0].id").value(category.getString("id")));
+    }
+
+    @Test
+    void deleteOfferTest() throws Exception {
+        JSONObject jsonObject = createImportPostingWithNested();
+        postImport(jsonObject);
+        mockMvc.perform(delete("/delete/" + nestedImportObjectId))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/nodes/" + nestedImportObjectId))
+                .andExpect(jsonPath("$.code").value(404));
+    }
+
+    @Test
+    void deleteCategoryTest() throws Exception {
+        JSONObject jsonObject = createImportPostingWithNested();
+        postImport(jsonObject);
+        mockMvc.perform(delete("/delete/" + firstImportObjectId))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/nodes/" + firstImportObjectId))
+                .andExpect(jsonPath("$.code").value(404));
+        mockMvc.perform(get("/nodes/" + nestedImportObjectId))
+                .andExpect(jsonPath("$.code").value(404));
     }
 }

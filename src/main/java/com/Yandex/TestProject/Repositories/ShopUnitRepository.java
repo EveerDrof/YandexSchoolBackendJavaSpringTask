@@ -41,5 +41,6 @@ public interface ShopUnitRepository extends JpaRepository<ShopUnit, String> {
     @Query(value = "SELECT * FROM shop_unit s WHERE (?1 >= s.date - INTERVAL 1 DAY AND ?1 <= s.date + INTERVAL 1 DAY)",
             nativeQuery = true)
     ArrayList<ShopUnit> findSales(String date);
-    
+
+    ArrayList<ShopUnit> findAllByParent(ShopUnit parent);
 }

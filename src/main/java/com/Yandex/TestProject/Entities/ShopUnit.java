@@ -6,16 +6,16 @@ import java.time.LocalDateTime;
 
 @Entity
 public class ShopUnit {
-    @Id
-    private String id;
     private String name;
     private long price;
     private LocalDateTime date;
     @Enumerated(EnumType.STRING)
     private ShopUnitType type;
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent")
     private ShopUnit parent;
+    @Id
+    private String id;
 
     public ShopUnit() {
 
