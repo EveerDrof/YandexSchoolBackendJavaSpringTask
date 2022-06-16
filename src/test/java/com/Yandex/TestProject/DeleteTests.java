@@ -48,4 +48,12 @@ class DeleteTests {
         mockMvc.perform(get("/nodes/" + testingUtils.getNestedImportObjectId()))
                 .andExpect(jsonPath("$.code").value(404));
     }
+
+    @Test
+    void deleteNonExistingNode() throws Exception {
+        mockMvc.perform(delete("/delete/" + testingUtils.getFirstImportObjectId()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value(404))
+                .andExpect(jsonPath("$.message").value("Item not found"));
+    }
 }

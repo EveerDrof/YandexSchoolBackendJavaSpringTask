@@ -126,9 +126,6 @@ public class Controller {
 
     @PostMapping(path = "imports")
     ResponseEntity postImport(@RequestBody String body) {
-        if (body.isEmpty()) {
-            return new ResponseEntity(HttpStatus.BAD_REQUEST);
-        }
         try {
             JSONObject jsonObject = new JSONObject(body);
             JSONArray items = jsonObject.getJSONArray("items");
@@ -188,11 +185,12 @@ public class Controller {
 
     @DeleteMapping(path = "delete/{id}")
     ResponseEntity deleteNode(@PathVariable String id) {
-        ShopUnit shopUnit = shopUnitService.findById(id).get();
-        String parentId = null;
-        if (shopUnit.getParent() != null) {
-            parentId = shopUnit.getParent().getId();
+        Optional<ShopUnit> shopUnitOptional = shopUnitService.findById(id);
+        if (shopUnitOptional.isEmpty()) {
+            return new ResponseEntity<>(new ErrorResponseObject(HttpStatus.NOT_FOUND, "Item not found"),
+                    HttpStatus.NOT_FOUND);
         }
+        ShopUnit shopUnit = shopUnitOptional.get();
         shopUnitService.deleteByIdRecursive(shopUnit);
         return new ResponseEntity(HttpStatus.OK);
     }

@@ -19,12 +19,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @Transactional
-class TestProjectApplicationTests {
+class ImportAndNodesTests {
     private final TestingUtils testingUtils;
     private MockMvc mockMvc;
 
     @Autowired
-    public TestProjectApplicationTests(MockMvc mockMvc) {
+    public ImportAndNodesTests(MockMvc mockMvc) {
         this.mockMvc = mockMvc;
         this.testingUtils = new TestingUtils(mockMvc);
     }
