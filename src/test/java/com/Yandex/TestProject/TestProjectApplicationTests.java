@@ -62,18 +62,25 @@ class TestProjectApplicationTests {
         nestedObject.remove("updateDate");
         nestedObject.put("type", "OFFER");
         nestedObject.put("children", new JSONArray());
+        nestedObject.put("price", 0);
         return nestedObject;
     }
 
-    private ResultActions postImport(JSONObject jsonObject) throws Exception {
-
-        return mockMvc.perform(post("/imports").contentType(MediaType.APPLICATION_JSON)
-                .content(jsonObject.toString()));
+    private void expectValidationFailed(ResultActions resultActions) throws Exception {
+        resultActions.andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value("Validation Failed"));
     }
 
     @Test
     void contextLoads() {
 
+    }
+
+
+    private ResultActions postImport(JSONObject jsonObject) throws Exception {
+        return mockMvc.perform(post("/imports").contentType(MediaType.APPLICATION_JSON)
+                .content(jsonObject.toString()));
     }
 
     @Test
@@ -84,9 +91,66 @@ class TestProjectApplicationTests {
     }
 
     @Test
+    void changeCategoryTypeTestShouldReturn400() throws Exception {
+        JSONObject jsonObject = createImportPostingWithNested();
+        postImport(jsonObject);
+        jsonObject.getJSONArray("items").getJSONObject(0).put("type", "OFFER");
+        jsonObject.getJSONArray("items").getJSONObject(0).getJSONArray("children").getJSONObject(0)
+                .put("type", "CATEGORY");
+        expectValidationFailed(postImport(jsonObject));
+        mockMvc.perform(get("/nodes/" + firstImportObjectId)).andExpect(jsonPath("$.type")
+                .value("CATEGORY"));
+    }
+
+    @Test
+    void tryToSwitchTypeShouldReturnError() throws Exception {
+        JSONObject jsonObject = createImportPostingJSON();
+        postImport(jsonObject);
+        jsonObject.getJSONArray("items").getJSONObject(0).put("type", "OFFER");
+        expectValidationFailed(postImport(jsonObject));
+    }
+    
+
+    @Test
     void postCorrectImportShouldReturn200() throws Exception {
         postImport(createImportPostingJSON()).andExpect(status().isOk());
+    }
 
+    @Test
+    void postWithNullName() throws Exception {
+        JSONObject jsonObject = createImportPostingJSON();
+        jsonObject.getJSONArray("items").getJSONObject(0).put("name", null);
+        expectValidationFailed(postImport(jsonObject));
+    }
+
+    @Test
+    void postOfferWithChildrenShouldReturnError() throws Exception {
+        JSONObject jsonObject = createImportPostingWithNested();
+        jsonObject.getJSONArray("items").getJSONObject(0).put("type", "OFFER");
+        expectValidationFailed(postImport(jsonObject));
+    }
+
+    @Test
+    void postOfferWithoutPriceShouldReturnError() throws Exception {
+        JSONObject jsonObject = createImportPostingWithNested();
+        jsonObject.getJSONArray("items").getJSONObject(0).getJSONArray("children").getJSONObject(0)
+                .remove("price");
+        expectValidationFailed(postImport(jsonObject));
+    }
+
+    @Test
+    void postCorrectOFFERWithNoParentShouldReturnOk() throws Exception {
+        JSONObject offer = createNestedImportJSONObject();
+        offer.remove("parentId");
+        JSONObject postJSONObject = new JSONObject();
+        JSONArray items = new JSONArray();
+        items.put(offer);
+        postJSONObject.put("items", items);
+        postJSONObject.put("updateDate", "2022-02-01T12:00:00.000Z");
+        postImport(postJSONObject).andExpect(status().isOk());
+        mockMvc.perform(get("/nodes/" + nestedImportObjectId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.parentId").value(IsNull.nullValue()));
     }
 
     @Test
@@ -169,11 +233,11 @@ class TestProjectApplicationTests {
         JSONObject rootItem = jsonObject.getJSONArray("items").getJSONObject(0);
         JSONObject nestedObject = createNestedImportJSONObject();
         nestedObject.put("price", 1000);
-        JSONObject nestedInNested = createNestedImportJSONObject();
-        nestedInNested.put("id", "12312312321");
-        nestedInNested.put("parent", nestedObject.get("id"));
-        nestedInNested.put("price", 2000);
-        nestedObject.getJSONArray("children").put(nestedInNested);
+        JSONObject secondNested = createNestedImportJSONObject();
+        secondNested.put("id", "12312312321");
+        secondNested.put("parent", firstImportObjectId);
+        secondNested.put("price", 2000);
+        rootItem.getJSONArray("children").put(secondNested);
         rootItem.getJSONArray("children").put(nestedObject);
         postImport(jsonObject);
         mockMvc.perform(get("/nodes/" + firstImportObjectId))

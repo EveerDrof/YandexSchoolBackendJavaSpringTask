@@ -79,7 +79,6 @@ public class ShopUnitImportService {
     }
 
     public void deleteByIdRecursive(ShopUnit shopUnit) {
-        System.out.println(shopUnit.getId());
         shopUnitStatisticUnitRepository.deleteByIdRecursive(shopUnit);
         shopUnitRepository.findAllByParent(shopUnit).forEach((this::deleteByIdRecursive));
         shopUnitRepository.deleteById(shopUnit.getId());

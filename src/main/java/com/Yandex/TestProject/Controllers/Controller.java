@@ -31,7 +31,7 @@ public class Controller {
     @Autowired
     public void ImportsController(ShopUnitImportService shopUnitImportService) {
         this.shopUnitService = shopUnitImportService;
-        formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.000'Z'").withZone(ZoneId.of("UTC"));
+        formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.nnn'Z'").withZone(ZoneId.of("UTC"));
         gson = new GsonBuilder().setPrettyPrinting()
                 .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
     }
@@ -66,10 +66,24 @@ public class Controller {
     }
 
 
-    private void stringToShopUnitAndSave(JSONObject item, LocalDateTime updateDate, ArrayList<ShopUnit> offers) {
+    private void stringToShopUnitAndSave(JSONObject item, LocalDateTime updateDate, ArrayList<ShopUnit> offers)
+            throws Exception {
+        boolean isCategory = false;
+        if (item.has("type")) {
+            isCategory = item.getString("type").equals(ShopUnitType.CATEGORY.toString());
+        } else {
+            throw new Exception();
+        }
         String name = item.getString("name");
         String type = item.getString("type");
         String id = item.getString("id");
+        Optional<ShopUnit> foundEntityOptional = shopUnitService.findById(id);
+        if (foundEntityOptional.isPresent()) {
+            ShopUnit shopUnit = foundEntityOptional.get();
+            if (!shopUnit.getType().toString().equals(type)) {
+                throw new Exception();
+            }
+        }
         ShopUnit parentUnit = null;
         if (!item.isNull("parentId")) {
             String parentId = item.getString("parentId");
@@ -81,18 +95,31 @@ public class Controller {
         long price = 0;
         if (item.has("price")) {
             price = item.getInt("price");
+            if (price < 0) {
+                throw new Exception();
+            }
+        } else {
+            if (!isCategory) {
+                throw new Exception();
+            }
         }
         ShopUnit shopUnit = new ShopUnit(id, name, ShopUnitType.valueOf(type), parentUnit, price, updateDate);
         shopUnitService.save(shopUnit);
         shopUnitService.saveShopStatisticUnit(new ShopUnitStatisticUnit(shopUnit));
-        if (shopUnit.getType() == ShopUnitType.OFFER && shopUnit.getDate().isAfter(shopUnit.getParent().getDate())) {
-            offers.add(shopUnit);
+        if (shopUnit.getParent() != null) {
+            if (shopUnit.getType() == ShopUnitType.OFFER && shopUnit.getDate().isAfter(shopUnit.getParent().getDate())) {
+                offers.add(shopUnit);
+            }
         }
-        if (item.has("children")) {
-            JSONArray children = item.getJSONArray("children");
-            for (int k = 0; k < children.length(); k++) {
-                JSONObject childJSONObject = children.getJSONObject(k);
-                stringToShopUnitAndSave(childJSONObject, updateDate, offers);
+        if (item.has("children") && item.getJSONArray("children").length() > 0) {
+            if (isCategory) {
+                JSONArray children = item.getJSONArray("children");
+                for (int k = 0; k < children.length(); k++) {
+                    JSONObject childJSONObject = children.getJSONObject(k);
+                    stringToShopUnitAndSave(childJSONObject, updateDate, offers);
+                }
+            } else {
+                throw new Exception();
             }
         }
     }
@@ -116,7 +143,8 @@ public class Controller {
                 shopUnitService.updateDateForAllParents(unit.getId(), unit.getDate());
             });
         } catch (Exception exception) {
-            return new ResponseEntity("Validation Failed", HttpStatus.BAD_REQUEST);
+            return new ResponseEntity(new ErrorResponseObject(HttpStatus.BAD_REQUEST, "Validation Failed"),
+                    HttpStatus.BAD_REQUEST);
         }
         return new ResponseEntity(HttpStatus.OK);
     }
