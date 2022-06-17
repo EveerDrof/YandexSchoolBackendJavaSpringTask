@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.ResolverStyle;
 import java.util.ArrayList;
 import java.util.Optional;
 
@@ -27,13 +28,20 @@ public class Controller {
     private ShopUnitImportService shopUnitService;
     private DateTimeFormatter formatter;
     private Gson gson;
+    private ResponseEntity notFoundResponseEntity;
+    private ResponseEntity validationsFailedResponseEntity;
 
     @Autowired
     public void ImportsController(ShopUnitImportService shopUnitImportService) {
         this.shopUnitService = shopUnitImportService;
-        formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.nnn'Z'").withZone(ZoneId.of("UTC"));
+        formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.000'Z'").withZone(ZoneId.of("UTC"))
+                .withResolverStyle(ResolverStyle.LENIENT);
         gson = new GsonBuilder().setPrettyPrinting()
                 .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
+        validationsFailedResponseEntity = new ResponseEntity(new ErrorResponseObject(HttpStatus.BAD_REQUEST,
+                "Validation Failed"), HttpStatus.BAD_REQUEST);
+        notFoundResponseEntity = new ResponseEntity(new ErrorResponseObject(HttpStatus.NOT_FOUND,
+                "Item not found"), HttpStatus.NOT_FOUND);
     }
 
     private JSONObject shopUnitToJSON(ShopUnit shopUnit, boolean withChildren) {
@@ -140,8 +148,7 @@ public class Controller {
                 shopUnitService.updateDateForAllParents(unit.getId(), unit.getDate());
             });
         } catch (Exception exception) {
-            return new ResponseEntity(new ErrorResponseObject(HttpStatus.BAD_REQUEST, "Validation Failed"),
-                    HttpStatus.BAD_REQUEST);
+            return validationsFailedResponseEntity;
         }
         return new ResponseEntity(HttpStatus.OK);
     }
@@ -150,8 +157,7 @@ public class Controller {
     ResponseEntity getNode(@PathVariable String id) {
         Optional<ShopUnit> findResult = shopUnitService.findById(id);
         if (findResult.isEmpty()) {
-            return new ResponseEntity(new ErrorResponseObject(HttpStatus.NOT_FOUND, "Item not found"),
-                    HttpStatus.NOT_FOUND);
+            return notFoundResponseEntity;
         }
         ShopUnit result = findResult.get();
 
@@ -160,7 +166,12 @@ public class Controller {
 
     @GetMapping(path = "sales", produces = {MediaType.APPLICATION_JSON_VALUE})
     ResponseEntity getSales(@RequestParam String date) {
-        LocalDateTime dateTime = LocalDateTime.parse(date.substring(0, date.length() - 1));
+        LocalDateTime dateTime;
+        try {
+            dateTime = LocalDateTime.parse(date, formatter);
+        } catch (Exception ex) {
+            return validationsFailedResponseEntity;
+        }
         ArrayList<ShopUnit> sales = shopUnitService.getSales(dateTime);
         JSONObject responseJSON = new JSONObject();
         JSONArray items = new JSONArray();
@@ -174,9 +185,20 @@ public class Controller {
     @GetMapping(path = "node/{id}/statistic", produces = {MediaType.APPLICATION_JSON_VALUE})
     ResponseEntity getNodeStatistic(@PathVariable String id, @RequestParam String dateStart,
                                     @RequestParam String dateEnd) {
-        LocalDateTime dateTimeStart = LocalDateTime.parse(dateStart.substring(0, dateStart.length() - 1));
-        LocalDateTime dateTimeEnd = LocalDateTime.parse(dateEnd.substring(0, dateEnd.length() - 1));
-        ArrayList<ShopUnitStatisticUnit> items = shopUnitService.findStatisticsAllByIdAndPeriod(id, dateTimeStart,
+        LocalDateTime dateTimeStart;
+        LocalDateTime dateTimeEnd;
+        try {
+            dateTimeStart = LocalDateTime.parse(dateStart, formatter);
+            dateTimeEnd = LocalDateTime.parse(dateEnd, formatter);
+        } catch (Exception ex) {
+            return validationsFailedResponseEntity;
+        }
+        Optional<ShopUnit> shopUnitOptional = shopUnitService.findById(id);
+        if (shopUnitOptional.isEmpty()) {
+            return notFoundResponseEntity;
+        }
+        ShopUnit shopUnit = shopUnitOptional.get();
+        ArrayList<ShopUnitStatisticUnit> items = shopUnitService.findStatisticsAllByIdAndPeriod(shopUnit, dateTimeStart,
                 dateTimeEnd);
         JSONObject responseJSON = new JSONObject();
         responseJSON.put("items", new JSONArray(gson.toJson(items)));
@@ -187,8 +209,7 @@ public class Controller {
     ResponseEntity deleteNode(@PathVariable String id) {
         Optional<ShopUnit> shopUnitOptional = shopUnitService.findById(id);
         if (shopUnitOptional.isEmpty()) {
-            return new ResponseEntity<>(new ErrorResponseObject(HttpStatus.NOT_FOUND, "Item not found"),
-                    HttpStatus.NOT_FOUND);
+            return notFoundResponseEntity;
         }
         ShopUnit shopUnit = shopUnitOptional.get();
         shopUnitService.deleteByIdRecursive(shopUnit);

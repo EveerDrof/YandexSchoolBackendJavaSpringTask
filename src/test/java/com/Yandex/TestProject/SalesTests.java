@@ -73,4 +73,13 @@ class SalesTests {
                 .andExpect(jsonPath("$.items").isEmpty());
     }
 
+    @Test
+    void wrongTimeFormatShouldReturnError() throws Exception {
+        JSONObject jsonObject = testingUtils.createImportPostingJSON();
+        testingUtils.postImport(jsonObject);
+        testingUtils.expectValidationFailed(
+                mockMvc.perform(get("/sales").param("date", "2022-02-01T12:00:00.0000Z"))
+        );
+    }
+
 }

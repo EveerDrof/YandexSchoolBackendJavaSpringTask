@@ -68,7 +68,7 @@ public class ShopUnitImportService {
         return shopUnitRepository.findSales(formatter.format(date));
     }
 
-    public ArrayList<ShopUnitStatisticUnit> findStatisticsAllByIdAndPeriod(String id, LocalDateTime dateStart,
+    public ArrayList<ShopUnitStatisticUnit> findStatisticsAllByIdAndPeriod(ShopUnit id, LocalDateTime dateStart,
                                                                            LocalDateTime dateEnd) {
         return shopUnitStatisticUnitRepository.findAllByIdAndPeriod(id, formatter.format(dateStart),
                 formatter.format(dateEnd));
