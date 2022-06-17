@@ -74,12 +74,12 @@ public class Controller {
 
     private JSONObject shopUnitToJSON(ShopUnitStatisticUnit shopUnit, String id, boolean withChildren) {
         JSONObject jsonObject = shopUnitToJSON((ShopUnitTemplate) shopUnit, id, withChildren);
-
         if (shopUnit.getType() != ShopUnitType.OFFER) {
-            if (!jsonObject.has("children") || jsonObject.getJSONArray("children").length() == 0) {
+            if (!jsonObject.has("children")) {
                 jsonObject.put("price", JSONObject.NULL);
             }
         }
+        jsonObject.remove("children");
         return jsonObject;
     }
 
@@ -185,7 +185,7 @@ public class Controller {
         JSONObject responseJSON = new JSONObject();
         JSONArray items = new JSONArray();
         sales.forEach((unit) -> {
-            items.put(shopUnitToJSON(unit, unit.getId(), false));
+            items.put(shopUnitToJSON(unit, unit.getId(), true));
         });
         responseJSON.put("items", items);
         return new ResponseEntity(responseJSON.toString(), HttpStatus.OK);

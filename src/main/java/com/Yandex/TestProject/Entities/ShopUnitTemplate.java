@@ -66,4 +66,8 @@ public class ShopUnitTemplate {
     public void setDate(LocalDateTime date) {
         this.date = date;
     }
+
+    public String getId() {
+        return null;
+    }
 }

@@ -24,6 +24,7 @@ public class ShopUnitStatisticUnit extends ShopUnitTemplate {
         return pk;
     }
 
+    @Override
     public String getId() {
         return id;
     }

@@ -67,7 +67,7 @@ class StatisticsTests {
     }
 
     @Test
-    void multipleUpdatesTest() throws Exception {
+    void multipleUpdatesPriceTest() throws Exception {
         JSONObject jsonObject = testingUtils.createImportPostingWithNested();
         JSONObject offer = jsonObject.getJSONArray("items").getJSONObject(0);
         offer.put("price", 1000);
@@ -116,5 +116,18 @@ class StatisticsTests {
                         .param("dateStart", "2022-02-01T00:00:00.000Z")
                         .param("dateEnd", "2022-02-01T14:00:00.000Z"))
                 .andExpect(jsonPath("$.items[0].price").value(IsNull.nullValue()));
+    }
+
+    @Test
+    void categoryPriceChangingTest() throws Exception {
+        JSONObject jsonObject = testingUtils.createImportPostingWithNested();
+        JSONObject category = jsonObject.getJSONArray("items").getJSONObject(0);
+        JSONObject offer = category.getJSONArray("children").getJSONObject(0);
+        offer.put("price", 1000);
+        testingUtils.postImport(jsonObject);
+        testPriceWithinDate(1000, 0);
+        offer.put("price", 3000);
+        testingUtils.postImport(jsonObject);
+        testPriceWithinDate(3000, 0);
     }
 }

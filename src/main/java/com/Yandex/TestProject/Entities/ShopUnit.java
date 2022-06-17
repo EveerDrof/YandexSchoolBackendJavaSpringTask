@@ -19,7 +19,7 @@ public class ShopUnit extends ShopUnitTemplate {
         this.id = id;
     }
 
-
+    @Override
     public String getId() {
         return id;
     }
