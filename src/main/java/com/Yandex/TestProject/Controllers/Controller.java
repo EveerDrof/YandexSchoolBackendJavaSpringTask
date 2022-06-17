@@ -2,6 +2,7 @@ package com.Yandex.TestProject.Controllers;
 
 import com.Yandex.TestProject.Entities.ShopUnit;
 import com.Yandex.TestProject.Entities.ShopUnitStatisticUnit;
+import com.Yandex.TestProject.Entities.ShopUnitTemplate;
 import com.Yandex.TestProject.Entities.ShopUnitType;
 import com.Yandex.TestProject.ErrorResponseObject;
 import com.Yandex.TestProject.LocalDateTimeAdapter;
@@ -44,7 +45,7 @@ public class Controller {
                 "Item not found"), HttpStatus.NOT_FOUND);
     }
 
-    private JSONObject shopUnitToJSON(ShopUnit shopUnit, boolean withChildren) {
+    private JSONObject shopUnitToJSON(ShopUnitTemplate shopUnit, String id, boolean withChildren) {
         String jsonInString = gson.toJson(shopUnit);
         JSONObject resultJSON = new JSONObject(jsonInString);
         resultJSON.remove("parent");
@@ -55,11 +56,9 @@ public class Controller {
             resultJSON.put("parentId", JSONObject.NULL);
         }
         if (withChildren) {
-            ArrayList<ShopUnit> shopUnits = shopUnitService.findAllByParentId(shopUnit.getId());
+            ArrayList<ShopUnit> shopUnits = shopUnitService.findAllByParentId(id);
             JSONArray jsonArray = new JSONArray();
-            shopUnits.forEach((unit) -> {
-                jsonArray.put(shopUnitToJSON(unit, withChildren));
-            });
+            shopUnits.forEach((unit) -> jsonArray.put(shopUnitToJSON(unit, unit.getId(), true)));
             if (jsonArray.length() == 0) {
                 resultJSON.put("children", JSONObject.NULL);
             } else {
@@ -67,12 +66,22 @@ public class Controller {
             }
         }
         if (shopUnit.getType() == ShopUnitType.CATEGORY) {
-            resultJSON.put("price", shopUnitService.computeAveragePriceInCategory(shopUnit.getId()));
+            resultJSON.put("price", shopUnitService.computeAveragePriceInCategory(id));
         }
         resultJSON.put("date", shopUnit.getDate().format(formatter));
         return resultJSON;
     }
 
+    private JSONObject shopUnitToJSON(ShopUnitStatisticUnit shopUnit, String id, boolean withChildren) {
+        JSONObject jsonObject = shopUnitToJSON((ShopUnitTemplate) shopUnit, id, withChildren);
+
+        if (shopUnit.getType() != ShopUnitType.OFFER) {
+            if (!jsonObject.has("children") || jsonObject.getJSONArray("children").length() == 0) {
+                jsonObject.put("price", JSONObject.NULL);
+            }
+        }
+        return jsonObject;
+    }
 
     private void stringToShopUnitAndSave(JSONObject item, LocalDateTime updateDate, ArrayList<ShopUnit> offers)
             throws Exception {
@@ -161,7 +170,7 @@ public class Controller {
         }
         ShopUnit result = findResult.get();
 
-        return new ResponseEntity(shopUnitToJSON(result, true).toString(), HttpStatus.OK);
+        return new ResponseEntity(shopUnitToJSON(result, result.getId(), true).toString(), HttpStatus.OK);
     }
 
     @GetMapping(path = "sales", produces = {MediaType.APPLICATION_JSON_VALUE})
@@ -176,7 +185,7 @@ public class Controller {
         JSONObject responseJSON = new JSONObject();
         JSONArray items = new JSONArray();
         sales.forEach((unit) -> {
-            items.put(shopUnitToJSON(unit, false));
+            items.put(shopUnitToJSON(unit, unit.getId(), false));
         });
         responseJSON.put("items", items);
         return new ResponseEntity(responseJSON.toString(), HttpStatus.OK);
@@ -201,7 +210,10 @@ public class Controller {
         ArrayList<ShopUnitStatisticUnit> items = shopUnitService.findStatisticsAllByIdAndPeriod(shopUnit, dateTimeStart,
                 dateTimeEnd);
         JSONObject responseJSON = new JSONObject();
-        responseJSON.put("items", new JSONArray(gson.toJson(items)));
+        JSONArray itemsJSONArray = new JSONArray();
+        items.forEach((statisticUnit) -> itemsJSONArray.put(shopUnitToJSON(statisticUnit, statisticUnit.getId(),
+                false)));
+        responseJSON.put("items", itemsJSONArray);
         return new ResponseEntity(responseJSON.toString(), HttpStatus.OK);
     }
 
