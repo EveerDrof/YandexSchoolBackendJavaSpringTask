@@ -65,8 +65,11 @@ public class Controller {
                 resultJSON.put("children", jsonArray);
             }
         }
-        if (shopUnit.getType() == ShopUnitType.CATEGORY) {
-            resultJSON.put("price", shopUnitService.computeAveragePriceInCategory(id));
+        long price = shopUnit.getPrice();
+        if (price < 0) {
+            resultJSON.put("price", JSONObject.NULL);
+        } else {
+            resultJSON.put("price", price);
         }
         resultJSON.put("date", shopUnit.getDate().format(formatter));
         return resultJSON;
@@ -74,16 +77,12 @@ public class Controller {
 
     private JSONObject shopUnitToJSON(ShopUnitStatisticUnit shopUnit, String id, boolean withChildren) {
         JSONObject jsonObject = shopUnitToJSON((ShopUnitTemplate) shopUnit, id, withChildren);
-        if (shopUnit.getType() != ShopUnitType.OFFER) {
-            if (!jsonObject.has("children")) {
-                jsonObject.put("price", JSONObject.NULL);
-            }
-        }
         jsonObject.remove("children");
         return jsonObject;
     }
 
-    private void stringToShopUnitAndSave(JSONObject item, LocalDateTime updateDate, ArrayList<ShopUnit> offers)
+    private void stringToShopUnitAndSave(JSONObject item, LocalDateTime updateDate, ArrayList<ShopUnit> offers,
+                                         ArrayList<String> shopUnitsIdsForStatistics)
             throws Exception {
         boolean isCategory = false;
         if (item.has("type")) {
@@ -121,8 +120,20 @@ public class Controller {
             }
         }
         ShopUnit shopUnit = new ShopUnit(id, name, ShopUnitType.valueOf(type), parentUnit, price, updateDate);
-        shopUnitService.save(shopUnit);
-        shopUnitService.saveShopStatisticUnit(new ShopUnitStatisticUnit(shopUnit));
+        shopUnit = shopUnitService.save(shopUnit);
+        if (isCategory) {
+            shopUnitsIdsForStatistics.add(shopUnit.getId());
+        }
+        if (isCategory) {
+            replaceAveragePriceRecursive(shopUnit);
+        } else {
+            if (shopUnit.getParent() != null) {
+                replaceAveragePriceRecursive(shopUnit.getParent());
+            }
+        }
+        if (!isCategory) {
+            shopUnitService.saveShopStatisticUnit(new ShopUnitStatisticUnit(shopUnit));
+        }
         if (shopUnit.getParent() != null) {
             if (shopUnit.getType() == ShopUnitType.OFFER && shopUnit.getDate().isAfter(shopUnit.getParent().getDate())) {
                 offers.add(shopUnit);
@@ -133,7 +144,7 @@ public class Controller {
                 JSONArray children = item.getJSONArray("children");
                 for (int k = 0; k < children.length(); k++) {
                     JSONObject childJSONObject = children.getJSONObject(k);
-                    stringToShopUnitAndSave(childJSONObject, updateDate, offers);
+                    stringToShopUnitAndSave(childJSONObject, updateDate, offers, shopUnitsIdsForStatistics);
                 }
             } else {
                 throw new Exception();
@@ -149,12 +160,17 @@ public class Controller {
             String updateDate = jsonObject.getString("updateDate");
             LocalDateTime date = LocalDateTime.parse(updateDate, formatter);
             ArrayList<ShopUnit> offers = new ArrayList<>();
+            ArrayList<String> shopUnitsIdsForStatistics = new ArrayList<>();
             for (int i = 0; i < items.length(); i++) {
                 JSONObject item = items.getJSONObject(i);
-                stringToShopUnitAndSave(item, date, offers);
+                stringToShopUnitAndSave(item, date, offers, shopUnitsIdsForStatistics);
             }
             offers.forEach((unit) -> {
                 shopUnitService.updateDateForAllParents(unit.getId(), unit.getDate());
+            });
+            shopUnitsIdsForStatistics.forEach((id) -> {
+                ShopUnit categoryShopUnit = shopUnitService.findById(id).get();
+                shopUnitService.saveShopStatisticUnit(new ShopUnitStatisticUnit(categoryShopUnit));
             });
         } catch (Exception exception) {
             return validationsFailedResponseEntity;
@@ -225,6 +241,32 @@ public class Controller {
         }
         ShopUnit shopUnit = shopUnitOptional.get();
         shopUnitService.deleteByIdRecursive(shopUnit);
+        replaceAveragePriceRecursive(shopUnit.getParent());
         return new ResponseEntity(HttpStatus.OK);
+    }
+
+    private void replaceAveragePriceRecursive(Optional<ShopUnitTemplate> shopUnitTemplateOptional) {
+        if (shopUnitTemplateOptional.isEmpty()) {
+            return;
+        }
+        replaceAveragePriceRecursive(shopUnitTemplateOptional.get());
+    }
+
+    private void replaceAveragePriceRecursive(ShopUnitTemplate shopUnitTemplate) {
+        if (shopUnitTemplate == null) {
+            return;
+        }
+
+        long price = -1;
+        if (shopUnitService.findAllByParentId(shopUnitTemplate.getId()).size() > 0) {
+            price = shopUnitService.computeAveragePriceInCategory(shopUnitTemplate.getId());
+        }
+        shopUnitTemplate.setPrice(price);
+        if (shopUnitTemplate instanceof ShopUnit) {
+            shopUnitService.save((ShopUnit) shopUnitTemplate);
+        } else {
+            shopUnitService.saveShopStatisticUnit((ShopUnitStatisticUnit) shopUnitTemplate);
+        }
+        replaceAveragePriceRecursive(shopUnitTemplate.getParent());
     }
 }

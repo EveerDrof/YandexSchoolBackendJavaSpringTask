@@ -21,7 +21,7 @@ public interface ShopUnitRepository extends JpaRepository<ShopUnit, String> {
             "         FROM cte\n" +
             "         JOIN shop_unit ON cte.id = shop_unit.parent )\n" +
             "SELECT price\n" +
-            "FROM cte WHERE price != 0) as t", nativeQuery = true)
+            "FROM cte WHERE price >= 0 AND `type`='OFFER') as t", nativeQuery = true)
     Long computeAveragePriceInCategory(String parent);
 
     @Query(value = "SELECT T2.*\n" +

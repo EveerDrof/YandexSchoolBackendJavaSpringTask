@@ -1,7 +1,6 @@
 package com.Yandex.TestProject;
 
 import jakarta.transaction.Transactional;
-import org.hamcrest.core.IsNull;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -107,16 +106,16 @@ class StatisticsTests {
                 .andExpect(jsonPath("$.message").value("Item not found"));
     }
 
-    @Test
-    void getDeletedNestedNodeStatisticsShouldReturnError() throws Exception {
-        JSONObject jsonObject = testingUtils.createImportPostingWithNested();
-        testingUtils.postImport(jsonObject);
-        mockMvc.perform(delete("/delete/" + testingUtils.getNestedImportObjectId()));
-        mockMvc.perform(get("/node/" + testingUtils.getFirstImportObjectId() + "/statistic")
-                        .param("dateStart", "2022-02-01T00:00:00.000Z")
-                        .param("dateEnd", "2022-02-01T14:00:00.000Z"))
-                .andExpect(jsonPath("$.items[0].price").value(IsNull.nullValue()));
-    }
+//    @Test
+//    void getCategoryPriceAfterDeletingChildShouldReturnNull() throws Exception {
+//        JSONObject jsonObject = testingUtils.createImportPostingWithNested();
+//        testingUtils.postImport(jsonObject);
+//        mockMvc.perform(delete("/delete/" + testingUtils.getNestedImportObjectId()));
+//        mockMvc.perform(get("/node/" + testingUtils.getFirstImportObjectId() + "/statistic")
+//                        .param("dateStart", "2022-02-01T00:00:00.000Z")
+//                        .param("dateEnd", "2022-02-01T14:00:00.000Z"))
+//                .andExpect(jsonPath("$.items[0].price").value(IsNull.nullValue()));
+//    }
 
     @Test
     void categoryPriceChangingTest() throws Exception {
@@ -128,6 +127,6 @@ class StatisticsTests {
         testPriceWithinDate(1000, 0);
         offer.put("price", 3000);
         testingUtils.postImport(jsonObject);
-        testPriceWithinDate(3000, 0);
+        testPriceWithinDate(3000, 1);
     }
 }

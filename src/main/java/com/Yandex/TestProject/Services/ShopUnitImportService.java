@@ -31,8 +31,8 @@ public class ShopUnitImportService {
         this.entityManagerFactory = entityManagerFactory;
     }
 
-    public void save(ShopUnit shopUnit) {
-        shopUnitRepository.save(shopUnit);
+    public ShopUnit save(ShopUnit shopUnit) {
+        return shopUnitRepository.save(shopUnit);
     }
 
     public Optional<ShopUnit> findById(String id) {
@@ -44,11 +44,15 @@ public class ShopUnitImportService {
     }
 
     public long computeAveragePriceInCategory(String parent) {
+        if (shopUnitRepository.findAllByParent(parent).size() == 0) {
+            return -1;
+        }
         Long result = shopUnitRepository.computeAveragePriceInCategory(parent);
         if (result != null) {
-            return result.longValue();
+            return result;
+        } else {
+            return -1;
         }
-        return 0;
     }
 
     public void updateDateForAllParents(String id, LocalDateTime date) {

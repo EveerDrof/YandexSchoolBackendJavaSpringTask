@@ -11,7 +11,7 @@ public class ShopUnitTemplate {
     protected LocalDateTime date;
     @Enumerated(EnumType.STRING)
     protected ShopUnitType type;
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne()
     @JoinColumn(name = "parent")
     protected ShopUnit parent;
 
