@@ -242,6 +242,9 @@ public class Controller {
         ShopUnit shopUnit = shopUnitOptional.get();
         shopUnitService.deleteByIdRecursive(shopUnit);
         replaceAveragePriceRecursive(shopUnit.getParent());
+        if (shopUnit.getParent() != null) {
+            replaceAveragePriceRecursive(new ShopUnitStatisticUnit(shopUnit.getParent()));
+        }
         return new ResponseEntity(HttpStatus.OK);
     }
 
