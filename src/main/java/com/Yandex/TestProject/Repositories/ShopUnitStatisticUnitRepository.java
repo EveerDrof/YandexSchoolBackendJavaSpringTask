@@ -22,5 +22,5 @@ public interface ShopUnitStatisticUnitRepository extends JpaRepository<ShopUnitS
             "        (select @pv \\:=  ?1) initialisation\n" +
             " where   find_in_set(parent, @pv) > 0\n" +
             " and     @pv \\:= concat(@pv, ',', id))", nativeQuery = true)
-    int deleteByIdRecursive(ShopUnit id);
+    Integer deleteByIdRecursive(String id);
 }

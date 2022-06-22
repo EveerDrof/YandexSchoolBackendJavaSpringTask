@@ -83,7 +83,7 @@ public class ShopUnitImportService {
     }
 
     public void deleteByIdRecursive(ShopUnit shopUnit) {
-        shopUnitStatisticUnitRepository.deleteByIdRecursive(shopUnit);
+        shopUnitStatisticUnitRepository.deleteByIdRecursive(shopUnit.getId());
         shopUnitRepository.findAllByParent(shopUnit).forEach((this::deleteByIdRecursive));
         shopUnitRepository.deleteById(shopUnit.getId());
     }
