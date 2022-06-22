@@ -6,6 +6,7 @@ import com.Yandex.TestProject.Repositories.ShopUnitRepository;
 import com.Yandex.TestProject.Repositories.ShopUnitStatisticUnitRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Query;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.LocalDateTime;
@@ -83,8 +84,44 @@ public class ShopUnitImportService {
     }
 
     public void deleteByIdRecursive(ShopUnit shopUnit) {
-        shopUnitStatisticUnitRepository.deleteByIdRecursive(shopUnit.getId());
+        System.out.println("+++++++++++++++++++0");
+        EntityManager em = entityManagerFactory.createEntityManager();
+        em.getTransaction().begin();
+        Query query = em.createNativeQuery("""
+                DELETE FROM shop_unit_statistic_unit WHERE pk IN(
+                SELECT pk FROM (SELECT pk FROM shop_unit_statistic_unit WHERE id ='asdfasfd') as T
+                )
+                """);
+        System.out.println("+++++++++++++++++++Before");
+        query.executeUpdate();
+        System.out.println("+++++++++++++++++++After");
+//        em.createNativeQuery(String.format("""
+//                WITH RECURSIVE ids(id, parent) AS (
+//                    SELECT
+//                        s1.id,
+//                        s1.parent
+//                    FROM shop_unit s1
+//                    WHERE id = '%s'
+//                        UNION
+//                    SELECT
+//                        s2.id,
+//                        s2.parent
+//                    FROM shop_unit s2, ids s1
+//                    WHERE s2.parent = s1.id
+//                )
+//                delete from shop_unit_statistic_unit s
+//                where s.id in (
+//                    select
+//                    id
+//                    from ids
+//                )
+//                """, shopUnit.getId())).executeUpdate();
+        em.getTransaction().commit();
+        System.out.println("+++++++++++++++++++1");
         shopUnitRepository.findAllByParent(shopUnit).forEach((this::deleteByIdRecursive));
+        System.out.println("+++++++++++++++++++2");
         shopUnitRepository.deleteById(shopUnit.getId());
+        System.out.println("+++++++++++++++++++3");
+
     }
 }
