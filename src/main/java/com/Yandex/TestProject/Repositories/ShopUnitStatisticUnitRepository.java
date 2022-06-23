@@ -8,7 +8,13 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.ArrayList;
 
 public interface ShopUnitStatisticUnitRepository extends JpaRepository<ShopUnitStatisticUnit, Long> {
-    @Query(value = "SELECT * FROM shop_unit_statistic_unit s WHERE s.id = ?1 AND s.date >= ?2 AND s.date <= ?3",
+    @Query(value = """
+            SELECT * FROM
+            shop_unit_statistic_unit s
+            WHERE s.id = ?1 AND
+            s.date >= ?2\\:\\:timestamp without time zone AND
+            s.date <= ?3\\:\\:timestamp without time zone
+            """,
             nativeQuery = true)
     ArrayList<ShopUnitStatisticUnit> findAllByIdAndPeriod(ShopUnit id, String dateStart, String dateEnd);
 }

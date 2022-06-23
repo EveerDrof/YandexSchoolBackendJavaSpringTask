@@ -6,7 +6,6 @@ import com.Yandex.TestProject.Repositories.ShopUnitRepository;
 import com.Yandex.TestProject.Repositories.ShopUnitStatisticUnitRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Query;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.LocalDateTime;
@@ -60,10 +59,12 @@ public class ShopUnitImportService {
         String formattedTime = formatter.format(date);
         EntityManager em = entityManagerFactory.createEntityManager();
         em.getTransaction().begin();
-        em.createNativeQuery("UPDATE shop_unit s SET s.`date`= '" + formattedTime + "' WHERE s.`date`" +
-                " < '" + formattedTime + "' AND s.id IN (WITH RECURSIVE dates(id,parent,`date`)AS(\n" +
-                "                SELECT s1.id,s1.parent,s1.`date` FROM shop_unit s1 WHERE" +
-                " id= '" + id + "' UNION SELECT s2.id,s2.parent,s2.`date`\n" +
+        em.createNativeQuery("UPDATE shop_unit s" +
+                " SET date= '" + formattedTime + "'\\:\\:timestamp without time zone" +
+                " WHERE s.date < '" + formattedTime + "'\\:\\:timestamp without time zone AND " +
+                " s.id IN (WITH RECURSIVE dates(id,parent,\"date\")AS(\n" +
+                "                SELECT s1.id,s1.parent,s1.date FROM shop_unit s1 WHERE" +
+                " id= '" + id + "' UNION SELECT s2.id,s2.parent,s2.date\n" +
                 "                FROM shop_unit s2,dates s1 WHERE s1.parent = s2.id)SELECT id " +
                 " FROM dates)").executeUpdate();
         em.getTransaction().commit();
@@ -87,35 +88,35 @@ public class ShopUnitImportService {
         System.out.println("+++++++++++++++++++0");
         EntityManager em = entityManagerFactory.createEntityManager();
         em.getTransaction().begin();
-        Query query = em.createNativeQuery("""
-                DELETE FROM shop_unit_statistic_unit WHERE pk IN(
-                SELECT pk FROM (SELECT pk FROM shop_unit_statistic_unit WHERE id ='asdfasfd') as T
+//        Query query = em.createNativeQuery("""
+//                DELETE FROM shop_unit_statistic_unit WHERE pk IN(
+//                SELECT pk FROM (SELECT pk FROM shop_unit_statistic_unit WHERE id ='asdfasfd') as T
+//                )
+//                """);
+//        System.out.println("+++++++++++++++++++Before");
+//        query.executeUpdate();
+//        System.out.println("+++++++++++++++++++After");
+        em.createNativeQuery(String.format("""
+                WITH RECURSIVE ids(id, parent) AS (
+                    SELECT
+                        s1.id,
+                        s1.parent
+                    FROM shop_unit s1
+                    WHERE id = '%s'
+                        UNION
+                    SELECT
+                        s2.id,
+                        s2.parent
+                    FROM shop_unit s2, ids s1
+                    WHERE s2.parent = s1.id
                 )
-                """);
-        System.out.println("+++++++++++++++++++Before");
-        query.executeUpdate();
-        System.out.println("+++++++++++++++++++After");
-//        em.createNativeQuery(String.format("""
-//                WITH RECURSIVE ids(id, parent) AS (
-//                    SELECT
-//                        s1.id,
-//                        s1.parent
-//                    FROM shop_unit s1
-//                    WHERE id = '%s'
-//                        UNION
-//                    SELECT
-//                        s2.id,
-//                        s2.parent
-//                    FROM shop_unit s2, ids s1
-//                    WHERE s2.parent = s1.id
-//                )
-//                delete from shop_unit_statistic_unit s
-//                where s.id in (
-//                    select
-//                    id
-//                    from ids
-//                )
-//                """, shopUnit.getId())).executeUpdate();
+                delete from shop_unit_statistic_unit s
+                where s.id in (
+                    select
+                    id
+                    from ids
+                )
+                """, shopUnit.getId())).executeUpdate();
         em.getTransaction().commit();
         System.out.println("+++++++++++++++++++1");
         shopUnitRepository.findAllByParent(shopUnit).forEach((this::deleteByIdRecursive));
